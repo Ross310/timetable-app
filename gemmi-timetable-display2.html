@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Timetable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 100vw;
+            overflow-x: auto;
+        }
+        canvas {
+            display: block;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        /* Custom button styling */
+        .download-button {
+            background-color: #2563eb;
+            color: #ffffff;
+            font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .download-button:hover {
+            background-color: #1e40af;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+
+    <div class="flex flex-col items-center p-4 bg-white rounded-xl shadow-lg mb-8">
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Course Timetable</h1>
+        <p class="text-gray-600 mb-6 text-center">Select a course to view its weekly timetable.</p>
+        
+        <div class="w-full max-w-sm flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <div class="w-full">
+                <label for="course-select" class="block text-gray-700 text-sm font-bold mb-2">Select Course:</label>
+                <select id="course-select" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline transition duration-200">
+                    <option value="">Loading...</option>
+                </select>
+            </div>
+            <button id="download-btn" class="download-button mt-4 sm:mt-0 shadow-lg" disabled>
+                Download PDF
+            </button>
+        </div>
+    </div>
+
+    <div id="timetable-display" class="hidden">
+        <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+            <div id="timetable-container" class="container">
+                <canvas id="timetable-canvas" width="1000" height="600"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const courseSelect = document.getElementById('course-select');
+            const downloadBtn = document.getElementById('download-btn');
+            const timetableDisplay = document.getElementById('timetable-display');
+            const canvas = document.getElementById('timetable-canvas');
+            const ctx = canvas.getContext('2d');
+            let timetableData = [];
+
+            // Drawing constants
+            const timeHeaderWidth = 100;
+            const dayHeaderHeight = 40;
+            const timeSlotHeight = 40;
+            const timeSlots = [
+                '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'
+            ];
+            const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+            const minutesInSlot = 30;
+
+            // Function to parse a time string like "9:00" and return minutes from midnight
+            function parseTime(timeStr) {
+                const [hours, minutes] = timeStr.split(':').map(Number);
+                return hours * 60 + minutes;
+            }
+
+            // Function to convert 12-hour time string to 24-hour time string
+            function convert12hrTo24hr(timeStr) {
+                let [hours, minutes] = timeStr.split(':').map(Number);
+                // Adjust for PM times (assuming times like 1:00 to 8:00 are PM)
+                if (hours >= 1 && hours <= 8) {
+                    hours += 12;
+                }
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            }
+
+            // Function to draw the timetable on the canvas
+            function drawTimetable(course) {
+                // Clear the canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Calculate cell dimensions dynamically
+                const timeCellWidth = (canvas.width - timeHeaderWidth) / (timeSlots.length * 2);
+                const dayCellHeight = (canvas.height - dayHeaderHeight) / days.length;
+
+                // Draw headers
+                ctx.fillStyle = '#1f2937';
+                ctx.font = '600 14px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // Draw time headers
+                timeSlots.forEach((slot, index) => {
+                    ctx.save();
+                    ctx.translate(timeHeaderWidth + index * timeCellWidth * 2 + timeCellWidth, dayHeaderHeight / 2);
+                    ctx.fillStyle = '#1f2937';
+                    ctx.fillText(slot, 0, 0);
+                    ctx.restore();
+                });
+                
+                // Draw day labels
+                ctx.fillStyle = '#4b5563';
+                ctx.font = '600 14px Inter, sans-serif';
+                ctx.textAlign = 'left';
+                days.forEach((day, index) => {
+                    ctx.save();
+                    ctx.translate(10, dayHeaderHeight + index * dayCellHeight + dayCellHeight / 2);
+                    ctx.fillStyle = '#4b5563';
+                    ctx.fillText(day, 0, 0);
+                    ctx.restore();
+                });
+
+                // Draw grid lines (horizontal and vertical)
+                ctx.strokeStyle = '#e5e7eb';
+                
+                // Horizontal lines
+                for (let i = 0; i <= days.length; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(timeHeaderWidth, dayHeaderHeight + i * dayCellHeight);
+                    ctx.lineTo(canvas.width, dayHeaderHeight + i * dayCellHeight);
+                    ctx.stroke();
+                }
+
+                // Vertical lines (at the beginning of each hour)
+                for (let i = 0; i < timeSlots.length; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(timeHeaderWidth + i * timeCellWidth * 2, dayHeaderHeight);
+                    ctx.lineTo(timeHeaderWidth + i * timeCellWidth * 2, canvas.height);
+                    ctx.stroke();
+                }
+
+                // Draw events
+                const courseEvents = timetableData.filter(event => event.course === course);
+                courseEvents.forEach(event => {
+                    const timeParts = event.time.split(' - ');
+                    const startTime24hr = convert12hrTo24hr(timeParts[0]);
+                    const endTime24hr = convert12hrTo24hr(timeParts[1]);
+                    const formattedTime = `${startTime24hr} - ${endTime24hr}`;
+
+                    const startTimeMinutes = parseTime(startTime24hr);
+                    const dayIndex = parseInt(event.day) - 1;
+
+                    if (dayIndex >= 0 && dayIndex < days.length) {
+                        const startMinutesFrom9am = startTimeMinutes - parseTime('9:00');
+                        const startSlotIndex = startMinutesFrom9am / minutesInSlot;
+                        const durationInMinutes = event.length * 60;
+                        const durationInSlots = durationInMinutes / minutesInSlot;
+
+                        const x = timeHeaderWidth + startSlotIndex * timeCellWidth;
+                        const y = dayHeaderHeight + dayIndex * dayCellHeight;
+                        const width = durationInSlots * timeCellWidth;
+                        const height = dayCellHeight;
+
+                        // Draw event rectangle
+                        ctx.fillStyle = '#1e40af'; // Darker blue fill
+                        ctx.strokeStyle = '#2563eb';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.roundRect(x + 2, y + 2, width - 4, height - 4, 8);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        // Draw event text
+                        ctx.fillStyle = '#ffffff';
+                        ctx.textAlign = 'left';
+                        ctx.textBaseline = 'top';
+                        
+                        const textX = x + 10;
+                        const textY = y + 8;
+                        const lineHeight = 16;
+
+                        // Main unit/course name
+                        ctx.font = '600 14px Inter, sans-serif';
+                        ctx.fillText(event.unit, textX, textY);
+                        
+                        // Time, lecturer, and room
+                        ctx.font = '500 11px Inter, sans-serif';
+                        ctx.fillText(formattedTime, textX, textY + lineHeight + 2);
+                        ctx.fillText(`Lecturer: ${event.lecturer}`, textX, textY + lineHeight * 2 + 2);
+                        ctx.fillText(`Room: ${event.room}`, textX, textY + lineHeight * 3 + 2);
+                    }
+                });
+                timetableDisplay.classList.remove('hidden');
+                downloadBtn.disabled = false;
+            }
+
+            // Function to handle the CSV file content
+            function processCSV(csvString) {
+                const rows = csvString.trim().split('\n').map(row => row.split(',').map(cell => cell.replace(/"/g, '')));
+                const headers = rows[0];
+                timetableData = rows.slice(1).map(row => {
+                    const event = {};
+                    headers.forEach((header, index) => {
+                        event[header.trim()] = row[index] ? row[index].trim() : '';
+                    });
+                    event.length = parseFloat(event.length);
+                    return event;
+                });
+                
+                const courses = [...new Set(timetableData.map(event => event.course))].sort();
+                courseSelect.innerHTML = '<option value="">Select a course...</option>';
+                courses.forEach(course => {
+                    const option = document.createElement('option');
+                    option.value = course;
+                    option.textContent = course;
+                    courseSelect.appendChild(option);
+                });
+            }
+
+            // Direct content of the CSV file to avoid fetch errors.
+            const csvContent = `"course","unit","day","time","length","lecturer","room"
+"S104-G1","U4","2","9:00 - 10:30","1.5","Batoul","SP215"
+"S104-G1","TUT","2","11:00 - 12:00","1","Batoul","SP109"
+"S104-G1","U19","2","1:00 - 2:30","1.5","Batoul","SP312"
+"S104-G1","U12","4","1:15 - 2:45","1.5","Batoul","SP311"
+"S104-G1","English","3","9:00 - 10:30","1.5","None","TBA"
+"S104-G1","Maths","3","10:45 - 12:15","1.5","None","TBA"
+"S104-G1","U1","3","1:15 - 2:45","1.5","Batoul","SP312"
+"S104-G1","English","4","9:00 - 10:30","1.5","None","TBA"
+"S104-G1","Maths","4","10:45 - 12:15","1.5","None","TBA"
+"S104-G1","U3","5","1:15 - 2:45","1.5","Saimah","SP312"
+"S104-G1","WS","4","3:00 - 4:00","1","Alex","SP307"
+"S104-G1","U2","5","10:45 - 12:15","1.5","Alex","SP308"
+"S104-G1","U8","2","2:45 - 4:15","1.5","Alex","SP307"
+"S118ED-Y1-G1","U3C/14","3","10:45 - 12:15","1.5","Alex","SP307"
+"S118ED-Y1-G1","TUT","2","11:00 - 12:00","1","Saimah","SP215"
+"S118ED-Y1-G1","U3P/4","2","1:00 - 2:30","1.5","Sam","SP310"
+"S118ED-Y1-G1","U3B/10","4","10:45 - 12:15","1.5","Mubasshira","SP308"
+"S118ED-Y1-G1","English","3","9:00 - 10:30","1.5","None","TBA"
+"S118ED-Y1-G1","U2/4","3","1:00 - 2:30","1.5","Dalia","SP307"
+"S118ED-Y1-G1","English","4","9:00 - 10:30","1.5","None","TBA"
+"S118ED-Y1-G1","U1C/14","5","2:15 - 3:15","1","Alex","SP307"
+"S118ED-Y1-G1","U1P/4","4","1:00 - 2:00","1","Saimah","SP310"
+"S118ED-Y1-G1","U1C/14","5","9:00 - 10:00","1","John","SP306"
+"S118ED-Y1-G1","U1P/4","5","11:00 - 12:00","1","Amran","SP307"
+"S118ED-Y1-G1","U2/4","5","1:00 - 2:00","1","Amran","SP307"
+"S118ED-Y1-G1","U1B/9","2","2:45 - 3:45","1","Sadik","SP312"
+"S118ED-Y1-G1","U1B/9","4","2:15 - 3:15","1","Saimah","SP312"
+"S118ED-Y2-G1","Maths","1","9:00 - 10:30","1.5","None","SP201"
+"S118ED-Y2-G1","U7/6","1","10:45 - 12:15","1.5","Maarya","SP301"
+"S118ED-Y2-G1","U5C/14","1","1:00 - 2:45","1.75","John","SP306"
+"S118ED-Y2-G1","U5B/20","1","3:00 - 4:00","1","Maarya","SP301"
+"S118ED-Y2-G1","U5B/20","2","9:00 - 10:45","1.75","Maarya","SP301"
+"S118ED-Y2-G1","U5C/14","3","9:00 - 10:00","1","John","SP306"
+"S118ED-Y2-G1","U9","2","1:45 - 3:30","1.75","Mubasshira","SP308"
+"S118ED-Y2-G1","Maths","3","11:00 - 12:30","1.5","None","SP201"
+"S118ED-Y2-G1","U5P/21","3","1:30 - 2:30","1","Maarya","SP301"
+"S118ED-Y2-G1","U7/6","4","9:00 - 10:30","1.5","Saimah","SP312"
+"S118ED-Y2-G1","TUT","4","11:00 - 12:00","1","Saimah","SP002"
+"S118ED-Y2-G1","U5P/21","2","11:00 - 12:45","1.75","Steven","SP309"
+"S118ED-Y1-G2","U1B/9","1","9:00 - 10:00","1","Sadik","SP312"
+"S118ED-Y1-G2","U1P/4","4","1:00 - 2:00","1","Amran","SP312"
+"S118ED-Y1-G2","U2/4","1","1:00 - 2:30","1.5","Dalia","SP307"
+"S118ED-Y1-G2","U3P/4","3","1:30 - 3:00","1.5","Sam","SP310"
+"S118ED-Y1-G2","U1P/4","2","9:00 - 10:00","1","Saimah","SP309"
+"S118ED-Y1-G2","TUT","2","11:00 - 12:00","1","Mubasshira","SP308"
+"S118ED-Y1-G2","U1C/14","4","11:00 - 12:00","1","Alex","SP311"
+"S118ED-Y1-G2","U1B/9","1","10:00 - 11:00","1","Sadik","SP312"
+"S118ED-Y1-G2","Maths","3","9:00 - 10:30","1.5","None","TBA"
+"S118ED-Y1-G2","U1C/14","2","2:15 - 3:15","1","John","SP306"
+"S118ED-Y1-G2","Maths","4","9:00 - 10:30","1.5","None","TBA"
+"S118ED-Y1-G2","U3C/14","1","2:45 - 4:15","1.5","John","SP306"
+"S118ED-Y1-G2","U3B/10","3","11:00 - 12:30","1.5","Mubasshira","SP308"
+"S118ED-Y1-G2","U2/4","2","1:00 - 2:00","1","Amran","SP008"
+"S118ED-Y2-G2","English","2","11:00 - 12:30","1.5","None","SP207"
+"S118ED-Y2-G2","U5C/14","2","9:00 - 10:45","1.75","John","SP306"
+"S118ED-Y2-G2","U5C/14","2","1:15 - 2:15","1","John","SP306"
+"S118ED-Y2-G2","U9","3","9:00 - 10:45","1.75","Mubasshira","SP308"
+"S118ED-Y2-G2","U5B/20","3","11:00 - 12:00","1","Maarya","SP301"
+"S118ED-Y2-G2","U7/6","3","1:00 - 2:30","1.5","Saimah","SP309"
+"S118ED-Y2-G2","U7/6","4","9:00 - 10:30","1.5","Maarya","SP301"
+"S118ED-Y2-G2","TUT","4","11:00 - 12:00","1","Dalia","SP312"
+"S118ED-Y2-G2","U5P/21","4","1:45 - 3:30","1.75","Steven","SP309"
+"S118ED-Y2-G2","English","5","9:00 - 10:30","1.5","None","SP207"
+"S118ED-Y2-G2","U5B/20","5","1:00 - 2:45","1.75","Maarya","SP301"
+"S118ED-Y2-G2","U5P/21","5","3:00 - 4:00","1","Maarya","SP301"
+"S118ED-Y1-G3","U3C/14","1","9:00 - 10:30","1.5","John","SP306"
+"S118ED-Y1-G3","U2/4","3","9:00 - 10:30","1.5","Dalia","SP307"
+"S118ED-Y1-G3","U3B/10","1","1:15 - 2:45","1.5","Mubasshira","SP308"
+"S118ED-Y1-G3","U3P/4","2","9:00 - 10:30","1.5","Sam","SP310"
+"S118ED-Y1-G3","TUT","2","11:00 - 12:00","1","Sadik","SP312"
+"S118ED-Y1-G3","U1P/4","2","1:00 - 2:00","1","Saimah","SP209"
+"S118ED-Y1-G3","U1B/9","1","3:00 - 4:00","1","Sadik","SP312"
+"S118ED-Y1-G3","U1B/9","3","11:00 - 12:00","1","Dalia","SP312"
+"S118ED-Y1-G3","U1P/4","3","1:00 - 2:00","1","Amran","SP215"
+"S118ED-Y1-G3","U2/4","1","11:15 - 12:15","1","Amran","SP307"
+"S118ED-Y1-G3","U1C/14","4","1:00 - 2:00","1","Alex","SP209"
+"S118ED-Y1-G3","U1C/14","4","2:15 - 3:15","1","John","SP306"
+"S118ED-Y2-G3","U9","2","9:00 - 10:45","1.75","Mubasshira","SP308"
+"S118ED-Y2-G3","U5P/21","2","11:00 - 12:00","1","Maarya","SP301"
+"S118ED-Y2-G3","U5B/20","3","9:00 - 10:00","1","Maarya","SP208"
+"S118ED-Y2-G3","U5C/14","3","10:15 - 11:15","1","John","SP306"
+"S118ED-Y2-G3","U5P/21","4","9:00 - 10:45","1.75","Steven","SP309"
+"S118ED-Y2-G3","TUT","4","11:00 - 12:00","1","Batoul","SP310"
+"S118ED-Y2-G3","U5B/20","4","1:00 - 2:45","1.75","Maarya","SP301"
+"S118ED-Y2-G3","U7/6","5","9:00 - 10:30","1.5","Saimah","SP312"
+"S118ED-Y2-G3","U7/6","5","10:45 - 12:15","1.5","Maarya","SP301"
+"S118ED-Y2-G3","U5C/14","5","1:15 - 3:00","1.75","John","SP306"
+"S118ED-Y1-G4","U1P/4","1","10:00 - 11:00","1","Amran","SP215"
+"S118ED-Y1-G4","U1B/9","1","11:15 - 12:15","1","Sadik","SP312"
+"S118ED-Y1-G4","U1B/9","2","9:00 - 10:00","1","Sadik","SP312"
+"S118ED-Y1-G4","TUT","2","11:00 - 12:00","1","Amran","SP307"
+"S118ED-Y1-G4","U2/4","2","1:00 - 2:30","1.5","Dalia","SP307"
+"S118ED-Y1-G4","U3C/14","5","9:00 - 10:30","1.5","Alex","SP307"
+"S118ED-Y1-G4","U3P/4","3","11:00 - 12:30","1.5","Sam","SP310"
+"S118ED-Y1-G4","U3B/10","3","1:30 - 3:00","1.5","Mubasshira","SP308"
+"S118ED-Y1-G4","U2/4","1","1:00 - 2:00","1","Amran","SP301"
+"S118ED-Y1-G4","U1C/14","5","11:00 - 12:00","1","John","SP306"
+"S118ED-Y1-G4","U1C/14","5","1:00 - 2:00","1","Alex","SP308"
+"S118ED-Y1-G4","U1P/4","3","9:00 - 10:00","1","Saimah","SP214"
+"S118ED-Y2-G4","U5B/20","2","1:00 - 2:45","1.75","Maarya","SP301"
+"S118ED-Y2-G4","U5P/21","2","3:00 - 4:00","1","Maarya","SP301"
+"S118ED-Y2-G4","U5P/21","3","9:00 - 10:45","1.75","Steven","SP309"
+"S118ED-Y2-G4","U5B/20","3","11:00 - 12:00","1","Batoul","SP113"
+"S118ED-Y2-G4","U5C/14","4","9:00 - 10:45","1.75","John","SP306"
+"S118ED-Y2-G4","TUT","4","11:00 - 12:00","1","Maarya","SP301"
+"S118ED-Y2-G4","U9","4","1:00 - 2:45","1.75","Mubasshira","SP308"
+"S118ED-Y2-G4","U7/6","5","9:00 - 10:30","1.5","Maarya","SP301"
+"S118ED-Y2-G4","U7/6","5","10:45 - 12:15","1.5","Saimah","SP312"
+"S118ED-Y2-G4","U5C/14","2","11:00 - 12:00","1","John","SP306"
+"S118ED-Y1-G5","U2/4","1","9:00 - 10:30","1.5","Dalia","SP307"
+"S118ED-Y1-G5","U3B/10","1","11:00 - 12:30","1.5","Mubasshira","SP308"
+"S118ED-Y1-G5","U3P/4","1","1:45 - 3:15","1.5","Sam","SP310"
+"S118ED-Y1-G5","U1B/9","3","10:00 - 11:00","1","Sadik","SP312"
+"S118ED-Y1-G5","U2/4","2","9:00 - 10:00","1","Amran","SP311"
+"S118ED-Y1-G5","TUT","2","11:00 - 12:00","1","Dalia","SP310"
+"S118ED-Y1-G5","U1P/4","2","2:15 - 3:15","1","Saimah","SP309"
+"S118ED-Y1-G5","U1C/14","2","1:00 - 2:00","1","Alex","SP309"
+"S118ED-Y1-G5","U1P/4","3","11:15 - 12:15","1","Amran","SP010"
+"S118ED-Y1-G5","U1B/9","3","9:00 - 10:00","1","Sadik","SP312"
+"S118ED-Y1-G5","U3C/14","4","9:00 - 10:30","1.5","Alex","SP307"
+"S118ED-Y1-G5","U1C/14","4","11:00 - 12:00","1","John","SP306"
+"S118ED-Y1-G6","U3P/4","1","9:00 - 10:30","1.5","Sam","SP310"
+"S118ED-Y1-G6","U1C/14","1","11:00 - 12:00","1","John","SP306"
+"S118ED-Y1-G6","U1B/9","1","1:00 - 2:00","1","Sadik","SP312"
+"S118ED-Y1-G6","U1C/14","2","9:00 - 10:00","1","Alex","SP207"
+"S118ED-Y1-G6","TUT","2","11:00 - 12:00","1","Alex","BC228"
+"S118ED-Y1-G6","U1B/9","2","1:00 - 2:00","1","Sadik","SP311"
+"S118ED-Y1-G6","U1P/4","4","11:00 - 12:00","1","Amran","SP307"
+"S118ED-Y1-G6","U1P/4","3","11:00 - 12:00","1","Saimah","SP309"
+"S118ED-Y1-G6","U3C/14","3","1:00 - 2:30","1.5","Alex","SP306"
+"S118ED-Y1-G6","U3B/10","4","9:00 - 10:30","1.5","Batoul","SP214"
+"S118ED-Y1-G6","U2/4","3","9:00 - 10:00","1","Amran","SP301"
+"S118ED-Y1-G6","U2/4","4","1:00 - 2:30","1.5","Dalia","SP307"
+`;
+
+            processCSV(csvContent);
+
+            // Event listener for course selection
+            courseSelect.addEventListener('change', (e) => {
+                const selectedCourse = e.target.value;
+                if (selectedCourse) {
+                    drawTimetable(selectedCourse);
+                } else {
+                    timetableDisplay.classList.add('hidden');
+                    downloadBtn.disabled = true;
+                }
+            });
+
+            // Event listener for the download button
+            downloadBtn.addEventListener('click', () => {
+                const doc = new window.jspdf.jsPDF('l', 'mm', 'a4'); // 'l' for landscape mode
+                const canvasImage = canvas.toDataURL('image/png', 1.0);
+                
+                const imgWidth = 297; // A4 landscape width in mm
+                const pageHeight = 210; // A4 landscape height in mm
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+
+                let position = 0;
+
+                doc.addImage(canvasImage, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                /*
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    doc.addPage();
+                    doc.addImage(canvasImage, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }*/
+                
+                const selectedCourse = courseSelect.value;
+                const filename = `timetable-${selectedCourse}.pdf`;
+                doc.save(filename);
+            });
+        });
+    </script>
+</body>
+</html>
