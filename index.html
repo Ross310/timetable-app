@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Course Timetable</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght{400;500;600;700}&display=swap" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -29,6 +29,7 @@
             padding: 0.75rem 1.5rem;
             border-radius: 0.5rem;
             transition: background-color 0.2s;
+            text-align: center;
         }
         .download-button:hover {
             background-color: #1e40af;
@@ -41,16 +42,24 @@
         <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Course Timetable</h1>
         <p class="text-gray-600 mb-6 text-center">Select a course to view its weekly timetable.</p>
         
-        <div class="w-full max-w-sm flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+        <div class="w-full max-w-2xl flex flex-col items-center space-y-4">
+            <!-- Selector Row -->
             <div class="w-full">
                 <label for="course-select" class="block text-gray-700 text-sm font-bold mb-2">Select Course:</label>
                 <select id="course-select" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline transition duration-200">
                     <option value="">Loading...</option>
                 </select>
             </div>
-            <button id="download-btn" class="download-button mt-4 sm:mt-0 shadow-lg" disabled>
-                Download PDF
-            </button>
+            
+            <!-- Button Row -->
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full">
+                <button id="download-btn" class="download-button shadow-lg w-full sm:w-1/2" disabled>
+                    Download Timetable PDF
+                </button>
+                <button id="download-attendance-btn" class="download-button shadow-lg w-full sm:w-1/2 bg-green-600 hover:bg-green-700" disabled>
+                    Download Attendance Card
+                </button>
+            </div>
         </div>
     </div>
 
@@ -69,13 +78,14 @@
         document.addEventListener('DOMContentLoaded', () => {
             const courseSelect = document.getElementById('course-select');
             const downloadBtn = document.getElementById('download-btn');
+            const downloadAttendanceBtn = document.getElementById('download-attendance-btn');
             const timetableDisplay = document.getElementById('timetable-display');
             const canvas = document.getElementById('timetable-canvas');
             const ctx = canvas.getContext('2d');
             let timetableData = [];
 
-            // Drawing constants
-            const timeHeaderWidth = 100;
+            // Drawing constants for Canvas
+            const timeHeaderWidth = 80;
             const dayHeaderHeight = 40;
             const timeSlotHeight = 40;
             const timeSlots = [
@@ -84,13 +94,13 @@
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
             const minutesInSlot = 30;
 
-            // Function to parse a time string like "9:00" and return minutes from midnight
+            // Helper function: parse time string like "9:00" and return minutes from midnight
             function parseTime(timeStr) {
                 const [hours, minutes] = timeStr.split(':').map(Number);
                 return hours * 60 + minutes;
             }
 
-            // Function to convert 12-hour time string to 24-hour time string
+            // Helper function: convert 12-hour time string to 24-hour time string
             function convert12hrTo24hr(timeStr) {
                 let [hours, minutes] = timeStr.split(':').map(Number);
                 // Adjust for PM times (assuming times like 1:00 to 8:00 are PM)
@@ -100,7 +110,7 @@
                 return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
             }
 
-            // Function to draw the timetable on the canvas
+            // --- CANVAS DRAWING FUNCTION ---
             function drawTimetable(course) {
                 // Clear the canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -208,7 +218,152 @@
                 });
                 timetableDisplay.classList.remove('hidden');
                 downloadBtn.disabled = false;
+                downloadAttendanceBtn.disabled = false;
             }
+
+            // --- PDF DRAWING HELPER FUNCTION (Draws one visual timetable card) ---
+            function drawAttendanceTimetable(doc, course, yOffset) {
+                const margin = 10;
+                const docWidth = doc.internal.pageSize.getWidth();
+                const cardWidth = docWidth - 2 * margin; // 190mm for A4 portrait
+                const cardHeight = 120; // Reduced height for one card (was 120)
+
+                let currentY = yOffset;
+
+                // 1. ID, Name, Date Header
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(50, 50, 50);
+
+                const headerLineHeight = 6;
+                doc.setFont(undefined, 'bold');
+                doc.text(`Course ID: ${course}`, margin, currentY);
+                doc.setFont(undefined, 'normal');
+                currentY += headerLineHeight;
+                doc.text(`ID: ______________`, margin, currentY);
+                doc.text(`Name: ______________`, margin+(docWidth / 4)-15, currentY);
+                //currentY += headerLineHeight;
+                doc.text(`Reason: ________________________`, margin+(docWidth*2/4)-20, currentY);
+                doc.text(`Date: ___________`, margin+(docWidth*3/4), currentY);
+                currentY += headerLineHeight - 1; // Slight space reduction before grid starts
+
+                const gridYStart = currentY;
+                const dayHeaderHeight = 8; // Reduced height for time heading
+                const timeSlots = ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+                const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+                const timeHeaderWidth = 20;
+                // Recalculate cell height based on the new cardHeight of 100
+                const dayCellHeight = (cardHeight - dayHeaderHeight) / days.length; 
+                const timeCellWidth = (cardWidth - timeHeaderWidth) / (timeSlots.length * 2);
+
+                // 2. Draw Grid and Headers
+                
+                // Draw outline box
+                doc.setDrawColor(0);
+                doc.setLineWidth(0.5);
+                doc.rect(margin, gridYStart, cardWidth, cardHeight);
+
+                // Draw day labels (vertical header)
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'bold');
+                doc.text('Day', margin + timeHeaderWidth / 2, gridYStart + dayHeaderHeight / 2, { align: 'center' });
+                doc.setLineWidth(0.2); // Thinner line for grid
+                
+                // Horizontal lines (for days)
+                days.forEach((day, index) => {
+                    const y = gridYStart + dayHeaderHeight + index * dayCellHeight;
+                    // Draw day name
+                    doc.setFontSize(10);
+                    doc.setFont(undefined, 'bold');
+                    doc.text(day.substring(0, 3), margin + timeHeaderWidth / 2, y + dayCellHeight / 2, { align: 'center' });
+                    // Draw day divider line
+                    doc.line(margin, y, margin + cardWidth, y); 
+                });
+                
+                // Vertical line for day header
+                doc.line(margin + timeHeaderWidth, gridYStart, margin + timeHeaderWidth, gridYStart + cardHeight);
+
+                // Draw time headers (horizontal top header)
+                doc.setFontSize(8);
+                doc.setFont(undefined, 'bold');
+                timeSlots.forEach((slot, index) => {
+                    const x = margin + timeHeaderWidth + index * timeCellWidth * 2 + timeCellWidth;
+                    doc.text(slot, x, gridYStart + dayHeaderHeight / 2, { align: 'center' });
+                    
+                    // Vertical lines (at the beginning of each hour)
+                    const xHourLine = margin + timeHeaderWidth + index * timeCellWidth * 2;
+                    doc.line(xHourLine, gridYStart, xHourLine, gridYStart + cardHeight);
+                    
+                    // Vertical lines for half-hour slots
+                    /*const xHalfHourLine = xHourLine + timeCellWidth;
+                    if (index < timeSlots.length - 1) { 
+                         doc.setLineDash([1, 1], 0); // Dashed line for half hour
+                         doc.line(xHalfHourLine, gridYStart + dayHeaderHeight, xHalfHourLine, gridYStart + cardHeight);
+                         doc.setLineDash(0, 0); // Solid line reset
+                    }*/
+                });
+                
+                // Horizontal line for time header base
+                doc.line(margin, gridYStart + dayHeaderHeight, margin + cardWidth, gridYStart + dayHeaderHeight);
+
+
+                // 3. Draw Events (Unit Name only, top-left alignment)
+                const minutesInSlot = 30;
+                const courseEvents = timetableData
+                    .filter(event => event.course === course);
+
+                courseEvents.forEach(event => {
+                    const timeParts = event.time.split(' - ');
+                    const startTime24hr = convert12hrTo24hr(timeParts[0]);
+
+                    const startTimeMinutes = parseTime(startTime24hr);
+                    const dayIndex = parseInt(event.day) - 1;
+
+                    if (dayIndex >= 0 && dayIndex < days.length) {
+                        const startMinutesFrom9am = startTimeMinutes - parseTime('9:00');
+                        const startSlotIndex = startMinutesFrom9am / minutesInSlot;
+                        const durationInMinutes = event.length * 60;
+                        const durationInSlots = durationInMinutes / minutesInSlot;
+
+                        const x = margin + timeHeaderWidth + startSlotIndex * timeCellWidth;
+                        const y = gridYStart + dayHeaderHeight + dayIndex * dayCellHeight;
+                        const width = durationInSlots * timeCellWidth;
+                        const height = dayCellHeight;
+
+                        // Draw event box outline and WHITE fill (R:255, G:255, B:255)
+                        doc.setDrawColor(30, 30, 30);
+                        doc.setFillColor(255, 255, 255); // White fill requested
+                        doc.setLineWidth(0.4);
+                        doc.rect(x + 0.5, y + 0.5, width - 1, height - 1, 'FD');
+
+                        // Unit Text (Top-Left aligned)
+                        doc.setTextColor(30, 30, 30);
+                        doc.setFont(undefined, 'bold');
+                        doc.setFontSize(7);
+                        
+                        const textMarginX = 1; // Small horizontal padding
+                        const textMarginY = 2.5; // Small vertical padding from the top edge of the cell
+                        
+                        doc.text(event.unit, x + textMarginX, y + textMarginY, { align: 'left', baseline: 'top' });
+                    }
+                });
+            }
+
+            // Function to generate the Visual Attendance Card PDF (Two per page)
+            function generateAttendanceCardPDF(course) {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4'); // Portrait mode
+
+                // Draw the first timetable (top half) - starting at 10mm
+                drawAttendanceTimetable(doc, course, 10);
+
+                // Draw the second timetable (bottom half) - starting at 130mm
+                // Start position changed from 150mm to 130mm to utilize space better after card height reduction
+                drawAttendanceTimetable(doc, course, 160); 
+                
+                doc.save(`attendance-card-visual-${course}.pdf`);
+            }
+
 
             // Function to handle the CSV file content
             function processCSV(csvString) {
@@ -378,16 +533,17 @@
                 } else {
                     timetableDisplay.classList.add('hidden');
                     downloadBtn.disabled = true;
+                    downloadAttendanceBtn.disabled = true;
                 }
             });
 
-            // Event listener for the download button
+            // Event listener for the download Timetable PDF button (Original logic)
             downloadBtn.addEventListener('click', () => {
                 const doc = new window.jspdf.jsPDF('l', 'mm', 'a4'); // 'l' for landscape mode
                 const canvasImage = canvas.toDataURL('image/png', 1.0);
                 
-                const imgWidth = 297; // A4 landscape width in mm
-                const pageHeight = 210; // A4 landscape height in mm
+                const imgWidth = 297; 
+                const pageHeight = 210; 
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 let heightLeft = imgHeight;
 
@@ -395,24 +551,28 @@
 
                 doc.addImage(canvasImage, 'PNG', 0, position, imgWidth, imgHeight);
                 heightLeft -= pageHeight;
-                /*
+
                 while (heightLeft >= 0) {
                     position = heightLeft - imgHeight;
                     doc.addPage();
                     doc.addImage(canvasImage, 'PNG', 0, position, imgWidth, imgHeight);
                     heightLeft -= pageHeight;
-                }*/
+                }
                 
                 const selectedCourse = courseSelect.value;
                 const filename = `timetable-${selectedCourse}.pdf`;
                 doc.save(filename);
             });
+
+            // Event listener for the download Attendance Card button (New visual logic)
+            downloadAttendanceBtn.addEventListener('click', () => {
+                const selectedCourse = courseSelect.value;
+                if (selectedCourse) {
+                    // Call the new visual generation function
+                    generateAttendanceCardPDF(selectedCourse);
+                }
+            });
         });
     </script>
 </body>
 </html>
-
-
-
-
-
