@@ -93,6 +93,7 @@
             ];
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
             const minutesInSlot = 30;
+            const eng_maths = ["English","Maths"];
 
             // Helper function: parse time string like "9:00" and return minutes from midnight
             function parseTime(timeStr) {
@@ -187,8 +188,18 @@
                         const width = durationInSlots * timeCellWidth;
                         const height = dayCellHeight;
 
+                        
                         // Draw event rectangle
-                        ctx.fillStyle = '#1e40af'; // Darker blue fill
+                        if (eng_maths.includes(event.unit))
+                        {
+                             ctx.fillStyle = '#45913d'; // Darker green fill
+                        }else{
+                             ctx.fillStyle = '#1e40af'; // Darker blue fill
+                        }
+                        
+                        
+                        // Draw event rectangle
+                        //ctx.fillStyle = '#1e40af'; // Darker blue fill
                         ctx.strokeStyle = '#2563eb';
                         ctx.lineWidth = 1;
                         ctx.beginPath();
@@ -578,6 +589,7 @@ S118ED-Y1-G6	U2/4	4	1:00 - 2:30	1.5	Dalia	SP307
     </script>
 </body>
 </html>
+
 
 
 
