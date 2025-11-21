@@ -367,7 +367,7 @@
 
             // Function to handle the CSV file content
             function processCSV(csvString) {
-                const rows = csvString.trim().split('\n').map(row => row.split(',').map(cell => cell.replace(/"/g, '')));
+                const rows = csvString.trim().split('\n').map(row => row.split('\t').map(cell => cell.replace(/"/g, '')));
                 const headers = rows[0];
                 timetableData = rows.slice(1).map(row => {
                     const event = {};
@@ -389,140 +389,140 @@
             }
 
             // Direct content of the CSV file to avoid fetch errors.
-            const csvContent = `"course","unit","day","time","length","lecturer","room"
-"S104-G1","U4","2","9:00 - 10:30","1.5","Batoul","SP215"
-"S104-G1","TUT","2","11:00 - 12:00","1","Batoul","SP309"
-"S104-G1","U19","2","1:00 - 2:30","1.5","Batoul","SP311"
-"S104-G1","U12","4","1:15 - 2:45","1.5","Batoul","SP311"
-"S104-G1","English","3","9:00 - 10:30","1.5","None","TBA"
-"S104-G1","Maths","3","10:45 - 12:15","1.5","None","TBA"
-"S104-G1","U1","3","1:15 - 2:45","1.5","Batoul","SP007"
-"S104-G1","English","4","9:00 - 10:30","1.5","None","TBA"
-"S104-G1","Maths","4","10:45 - 12:15","1.5","None","TBA"
-"S104-G1","U3","5","1:15 - 2:45","1.5","Saimah","SP312"
-"S104-G1","WS","4","3:00 - 4:00","1","Alex","SP307"
-"S104-G1","U2","5","10:45 - 12:15","1.5","Alex","SP308"
-"S104-G1","U8","2","2:45 - 4:15","1.5","Alex","SP307"
-"S118ED-Y1-G1","U3C/14","3","9:00 - 10:30","1.5","Alex","SP301"
-"S118ED-Y1-G1","TUT","3","11:00 - 12:00","1","Saimah","SP312"
-"S118ED-Y1-G1","U3P/4","2","9:00 - 10:30","1.5","Sam","SP310"
-"S118ED-Y1-G1","U3B/10","4","9:00 - 10:30","1.5","Mubasshira","SP308"
-"S118ED-Y1-G1","English","5","9:00 - 10:30","1.5","Paula","SP208"
-"S118ED-Y1-G1","U2/4","3","1:00 - 2:30","1.5","Dalia","SP307"
-"S118ED-Y1-G1","English","2","11:00 - 12:30","1.5","Paula","SP208"
-"S118ED-Y1-G1","U1C/14","5","1:15 - 2:15","1","Alex","SP307"
-"S118ED-Y1-G1","U1P/4","4","2:30 - 3:30","1","Saimah","SP312"
-"S118ED-Y1-G1","U1C/14","4","11:00 - 12:00","1","John","SP306"
-"S118ED-Y1-G1","U1P/4","5","11:00 - 12:00","1","Amran","SP307"
-"S118ED-Y1-G1","U2/4","2","1:30 - 2:30","1","Amran","SP308"
-"S118ED-Y1-G1","U1B/9","2","2:45 - 3:45","1","Sadik","SP308"
-"S118ED-Y1-G1","U1B/9","4","3:30 - 4:30","1","Saimah","SP312"
-"S118ED-Y2-G1","Maths","1","9:00 - 10:30","1.5","None","SP201"
-"S118ED-Y2-G1","U7/6","2","11:00 - 12:30","1.5","Maarya","SP301"
-"S118ED-Y2-G1","U5C/14","3","9:00 - 10:45","1.75","John","SP306"
-"S118ED-Y2-G1","U5B/20","1","3:00 - 4:00","1","Maarya","SP301"
-"S118ED-Y2-G1","U5B/20","4","9:00 - 10:45","1.75","Maarya","SP301"
-"S118ED-Y2-G1","U5C/14","1","1:45 - 2:45","1","John","SP306"
-"S118ED-Y2-G1","U9","2","9:00 - 10:45","1.75","Mubasshira","SP308"
-"S118ED-Y2-G1","Maths","3","11:00 - 12:30","1.5","None","SP201"
-"S118ED-Y2-G1","U5P/21","3","1:15 - 2:15","1","Maarya","SP301"
-"S118ED-Y2-G1","U7/6","2","1:30 - 3:00","1.5","Saimah","SP312"
-"S118ED-Y2-G1","TUT","4","11:00 - 12:00","1","Saimah","SP312"
-"S118ED-Y2-G1","U5P/21","1","11:00 - 12:45","1.75","Steven","SP309"
-"S118ED-Y1-G2","U1B/9","1","9:00 - 10:00","1","Sadik","SP312"
-"S118ED-Y1-G2","U1P/4","4","1:00 - 2:00","1","Amran","SP310"
-"S118ED-Y1-G2","U2/4","1","1:00 - 2:30","1.5","Dalia","SP307"
-"S118ED-Y1-G2","U3P/4","3","1:30 - 3:00","1.5","Sam","SP310"
-"S118ED-Y1-G2","U1P/4","2","10:00 - 11:00","1","Saimah","SP309"
-"S118ED-Y1-G2","TUT","2","11:00 - 12:00","1","Mubasshira","SP308"
-"S118ED-Y1-G2","U1C/14","4","11:00 - 12:00","1","Alex","SP310"
-"S118ED-Y1-G2","U1B/9","1","10:00 - 11:00","1","Sadik","SP312"
-"S118ED-Y1-G2","Maths","3","9:00 - 10:30","1.5","None","TBA"
-"S118ED-Y1-G2","U1C/14","2","2:00 - 3:00","1","John","SP306"
-"S118ED-Y1-G2","Maths","4","9:00 - 10:30","1.5","None","TBA"
-"S118ED-Y1-G2","U3C/14","1","2:45 - 4:15","1.5","John","SP306"
-"S118ED-Y1-G2","U3B/10","3","11:00 - 12:30","1.5","Mubasshira","SP308"
-"S118ED-Y1-G2","U2/4","4","2:00 - 3:00","1","Amran","SP310"
-"S118ED-Y2-G2","U5C/14","2","9:00 - 10:45","1.75","John","SP306"
-"S118ED-Y2-G2","U5C/14","2","1:00 - 2:00","1","John","SP306"
-"S118ED-Y2-G2","U9","3","9:00 - 10:45","1.75","Mubasshira","SP308"
-"S118ED-Y2-G2","U5B/20","3","11:00 - 12:00","1","Maarya","SP301"
-"S118ED-Y2-G2","U7/6","3","1:00 - 2:30","1.5","Saimah","SP011"
-"S118ED-Y2-G2","U7/6","2","2:15 - 3:45","1.5","Maarya","SP301"
-"S118ED-Y2-G2","TUT","4","11:00 - 12:00","1","Dalia","SP108"
-"S118ED-Y2-G2","U5P/21","4","1:45 - 3:30","1.75","Steven","SP309"
-"S118ED-Y2-G2","U5B/20","1","9:00 - 10:45","1.75","Maarya","SP301"
-"S118ED-Y2-G2","U5P/21","1","1:00 - 2:00","1","Maarya","SP215"
-"S118ED-Y1-G3","U3C/14","1","9:00 - 10:30","1.5","John","SP306"
-"S118ED-Y1-G3","U2/4","3","9:00 - 10:30","1.5","Dalia","SP307"
-"S118ED-Y1-G3","U3B/10","1","1:30 - 3:00","1.5","Mubasshira","SP308"
-"S118ED-Y1-G3","U3P/4","2","1:00 - 2:30","1.5","Sam","SP310"
-"S118ED-Y1-G3","TUT","2","11:00 - 12:00","1","Sadik","SP312"
-"S118ED-Y1-G3","U1P/4","2","9:00 - 10:00","1","Saimah","SP309"
-"S118ED-Y1-G3","U1B/9","3","2:00 - 3:00","1","Sadik","SP312"
-"S118ED-Y1-G3","U1B/9","3","11:00 - 12:00","1","Dalia","SP307"
-"S118ED-Y1-G3","U1P/4","3","1:00 - 2:00","1","Amran","SP312"
-"S118ED-Y1-G3","U2/4","1","11:15 - 12:15","1","Amran","SP307"
-"S118ED-Y1-G3","U1C/14","4","10:00 - 11:00","1","Alex","SP310"
-"S118ED-Y1-G3","U1C/14","4","1:00 - 2:00","1","John","SP306"
-"S118ED-Y2-G3","U9","1","9:00 - 10:45","1.75","Mubasshira","SP308"
-"S118ED-Y2-G3","U5P/21","1","11:00 - 12:00","1","Maarya","SP301"
-"S118ED-Y2-G3","U5B/20","3","9:00 - 10:00","1","Batoul","SP007"
-"S118ED-Y2-G3","U5C/14","3","11:00 - 12:00","1","John","SP306"
-"S118ED-Y2-G3","U5P/21","4","9:00 - 10:45","1.75","Steven","SP309"
-"S118ED-Y2-G3","TUT","4","11:00 - 12:00","1","Mubasshira","SP308"
-"S118ED-Y2-G3","U5B/20","4","1:00 - 2:45","1.75","Maarya","SP301"
-"S118ED-Y2-G3","U7/6","5","9:00 - 10:30","1.5","Saimah","SP312"
-"S118ED-Y2-G3","U7/6","5","10:45 - 12:15","1.5","Maarya","SP301"
-"S118ED-Y2-G3","U5C/14","5","1:15 - 3:00","1.75","John","SP306"
-"S118ED-Y1-G4","U1P/4","5","1:00 - 2:00","1","Amran","SP308"
-"S118ED-Y1-G4","U1B/9","1","11:15 - 12:15","1","Sadik","SP312"
-"S118ED-Y1-G4","U1B/9","2","9:00 - 10:00","1","Sadik","SP312"
-"S118ED-Y1-G4","TUT","2","11:00 - 12:00","1","Amran","SP307"
-"S118ED-Y1-G4","U2/4","2","1:00 - 2:30","1.5","Dalia","SP307"
-"S118ED-Y1-G4","U3C/14","5","9:00 - 10:30","1.5","Alex","SP307"
-"S118ED-Y1-G4","U3P/4","1","2:30 - 4:00","1.5","Sam","SP310"
-"S118ED-Y1-G4","U3B/10","3","1:30 - 3:00","1.5","Mubasshira","SP308"
-"S118ED-Y1-G4","U2/4","1","1:15 - 2:15","1","Amran","SP301"
-"S118ED-Y1-G4","U1C/14","5","11:00 - 12:00","1","John","SP306"
-"S118ED-Y1-G4","U1C/14","5","2:30 - 3:30","1","Alex","SP308"
-"S118ED-Y1-G4","U1P/4","3","9:00 - 10:00","1","Saimah","SP208"
-"S118ED-Y1-G4","Maths","1","9:00 - 10:45","1.75","Khadija","SP201"
-"S118ED-Y1-G4","Maths","3","11:00 - 12:30","1.5","Khadija","SP201"
-"S118ED-Y2-G4","U5B/20","2","9:00 - 10:45","1.75","Maarya","SP301"
-"S118ED-Y2-G4","U5P/21","5","1:15 - 2:15","1","Maarya","SP301"
-"S118ED-Y2-G4","U5P/21","3","9:00 - 10:45","1.75","Steven","SP309"
-"S118ED-Y2-G4","U5B/20","3","11:00 - 12:00","1","Batoul","SP108"
-"S118ED-Y2-G4","U5C/14","4","9:00 - 10:45","1.75","John","SP306"
-"S118ED-Y2-G4","TUT","4","11:00 - 12:00","1","Maarya","SP301"
-"S118ED-Y2-G4","U9","4","1:00 - 2:45","1.75","Mubasshira","SP201"
-"S118ED-Y2-G4","U7/6","5","9:00 - 10:30","1.5","Maarya","SP301"
-"S118ED-Y2-G4","U7/6","5","10:45 - 12:15","1.5","Saimah","SP312"
-"S118ED-Y2-G4","U5C/14","2","11:00 - 12:00","1","John","SP306"
-"S118ED-Y1-G5","U2/4","1","9:00 - 10:30","1.5","Dalia","SP307"
-"S118ED-Y1-G5","U3B/10","1","11:00 - 12:30","1.5","Mubasshira","SP308"
-"S118ED-Y1-G5","U3P/4","3","11:00 - 12:30","1.5","Sam","SP310"
-"S118ED-Y1-G5","U1B/9","1","2:15 - 3:15","1","Sadik","SP312"
-"S118ED-Y1-G5","U2/4","2","9:00 - 10:00","1","Amran","SP311"
-"S118ED-Y1-G5","TUT","2","11:00 - 12:00","1","Dalia","SP310"
-"S118ED-Y1-G5","U1P/4","4","10:00 - 11:00","1","Saimah","SP312"
-"S118ED-Y1-G5","U1C/14","2","1:00 - 2:00","1","Alex","SP309"
-"S118ED-Y1-G5","U1P/4","4","11:00 - 12:00","1","Amran","SP307"
-"S118ED-Y1-G5","U1B/9","3","9:00 - 10:00","1","Sadik","SP215"
-"S118ED-Y1-G5","U3C/14","4","1:00 - 2:30","1.5","Alex","SP308"
-"S118ED-Y1-G5","U1C/14","4","2:45 - 3:45","1","John","SP306"
-"S118ED-Y1-G6","U3P/4","1","9:00 - 10:30","1.5","Sam","SP310"
-"S118ED-Y1-G6","U1C/14","1","11:00 - 12:00","1","John","SP306"
-"S118ED-Y1-G6","U1B/9","2","1:00 - 2:00","1","Sadik","SP301"
-"S118ED-Y1-G6","U1C/14","2","9:00 - 10:00","1","Alex","SP307"
-"S118ED-Y1-G6","TUT","2","11:00 - 12:00","1","Alex","SP113"
-"S118ED-Y1-G6","U1B/9","1","1:00 - 2:00","1","Sadik","SP311"
-"S118ED-Y1-G6","U1P/4","3","9:00 - 10:00","1","Amran","SP312"
-"S118ED-Y1-G6","U1P/4","3","10:00 - 11:00","1","Saimah","SP312"
-"S118ED-Y1-G6","U3C/14","3","1:00 - 2:30","1.5","Alex","SP309"
-"S118ED-Y1-G6","U3B/10","4","10:30 - 12:00","1.5","Batoul","SP214"
-"S118ED-Y1-G6","U2/4","4","9:00 - 10:00","1","Amran","SP312"
-"S118ED-Y1-G6","U2/4","4","1:00 - 2:30","1.5","Dalia","SP307"
+            const csvContent = `course	unit	day	time	length	lecturer	room
+S104-G1	U4	2	9:00 - 10:30	1.5	Batoul	SP215
+S104-G1	TUT	2	11:00 - 12:00	1	Batoul	SP309
+S104-G1	U19	2	1:00 - 2:30	1.5	Batoul	SP311
+S104-G1	U12	4	1:15 - 2:45	1.5	Batoul	SP311
+S104-G1	English	3	9:00 - 10:30	1.5	None	TBA
+S104-G1	Maths	3	10:45 - 12:15	1.5	None	TBA
+S104-G1	U1	3	1:15 - 2:45	1.5	Batoul	SP007
+S104-G1	English	4	9:00 - 10:30	1.5	None	TBA
+S104-G1	Maths	4	10:45 - 12:15	1.5	None	TBA
+S104-G1	U3	5	1:15 - 2:45	1.5	Saimah	SP312
+S104-G1	WS	4	3:00 - 4:00	1	Alex	SP307
+S104-G1	U2	5	10:45 - 12:15	1.5	Alex	SP308
+S104-G1	U8	2	2:45 - 4:15	1.5	Alex	SP309
+S118ED-Y1-G1	U3C/14	3	9:00 - 10:30	1.5	Alex	SP301
+S118ED-Y1-G1	TUT	2	3:15 - 4:15	1	Saimah	SP312
+S118ED-Y1-G1	U3P/4	2	9:00 - 10:30	1.5	Amran	SP310
+S118ED-Y1-G1	U3B/10	4	9:00 - 10:30	1.5	Mubasshira	SP308
+S118ED-Y1-G1	English	5	9:00 - 10:30	1.5	None	SP208
+S118ED-Y1-G1	U2/4	3	1:00 - 2:30	1.5	Dalia	SP307
+S118ED-Y1-G1	English	2	11:00 - 12:30	1.5	Paula	SP208
+S118ED-Y1-G1	U1C/14	5	1:15 - 2:15	1	Alex	SP308
+S118ED-Y1-G1	U1P/4	4	1:00 - 2:00	1	Saimah	SP312
+S118ED-Y1-G1	U1C/14	4	11:00 - 12:00	1	John	SP306
+S118ED-Y1-G1	U1P/4	5	11:00 - 12:00	1	Amran	SP307
+S118ED-Y1-G1	U2/4	5	2:30 - 3:30	1	Amran	SP307
+S118ED-Y1-G1	U1B/9	2	2:00 - 3:00	1	Sadik	SP308
+S118ED-Y1-G1	U1B/9	4	2:15 - 3:15	1	Saimah	SP312
+S118ED-Y2-G1	Maths	1	9:00 - 10:30	1.5	Khadija	SP201
+S118ED-Y2-G1	U7/6	2	11:00 - 12:30	1.5	Maarya	SP301
+S118ED-Y2-G1	U5C/14	3	9:00 - 10:45	1.75	John	SP306
+S118ED-Y2-G1	U5B/20	1	3:00 - 4:00	1	Maarya	SP301
+S118ED-Y2-G1	U5B/20	4	9:00 - 10:45	1.75	Maarya	SP301
+S118ED-Y2-G1	U5C/14	1	1:45 - 2:45	1	John	SP306
+S118ED-Y2-G1	U9	2	9:00 - 10:45	1.75	Mubasshira	SP308
+S118ED-Y2-G1	Maths	3	11:00 - 12:30	1.5	Khadija	SP201
+S118ED-Y2-G1	U5P/21	3	1:15 - 2:15	1	Maarya	SP301
+S118ED-Y2-G1	U7/6	2	1:30 - 3:00	1.5	Saimah	SP312
+S118ED-Y2-G1	TUT	4	11:00 - 12:00	1	Saimah	SP312
+S118ED-Y2-G1	U5P/21	1	11:00 - 12:45	1.75	Steven	SP309
+S118ED-Y1-G2	U1B/9	1	9:00 - 10:00	1	Sadik	SP312
+S118ED-Y1-G2	U1P/4	4	1:00 - 2:00	1	Amran	SP310
+S118ED-Y1-G2	U2/4	1	1:00 - 2:30	1.5	Dalia	SP307
+S118ED-Y1-G2	U3P/4	4	2:15 - 3:45	1.5	Amran	SP310
+S118ED-Y1-G2	U1P/4	2	10:00 - 11:00	1	Saimah	SP309
+S118ED-Y1-G2	TUT	2	11:00 - 12:00	1	Mubasshira	SP308
+S118ED-Y1-G2	U1C/14	4	11:00 - 12:00	1	Alex	SP310
+S118ED-Y1-G2	U1B/9	1	10:00 - 11:00	1	Sadik	SP312
+S118ED-Y1-G2	Maths	3	9:00 - 10:30	1.5	None	TBA
+S118ED-Y1-G2	U1C/14	2	2:00 - 3:00	1	John	SP306
+S118ED-Y1-G2	Maths	4	9:00 - 10:30	1.5	None	TBA
+S118ED-Y1-G2	U3C/14	1	2:45 - 4:15	1.5	John	SP306
+S118ED-Y1-G2	U3B/10	3	11:00 - 12:30	1.5	Mubasshira	SP308
+S118ED-Y1-G2	U2/4	2	3:15 - 4:15	1	Amran	SP307
+S118ED-Y2-G2	U5C/14	2	9:00 - 10:45	1.75	John	SP306
+S118ED-Y2-G2	U5C/14	2	1:00 - 2:00	1	John	SP306
+S118ED-Y2-G2	U9	3	9:00 - 10:45	1.75	Mubasshira	SP308
+S118ED-Y2-G2	U5B/20	3	11:00 - 12:00	1	Maarya	SP301
+S118ED-Y2-G2	U7/6	3	1:00 - 2:30	1.5	Saimah	SP011
+S118ED-Y2-G2	U7/6	2	2:15 - 3:45	1.5	Maarya	SP301
+S118ED-Y2-G2	TUT	4	11:00 - 12:00	1	Dalia	SP311
+S118ED-Y2-G2	U5P/21	4	1:45 - 3:30	1.75	Steven	SP309
+S118ED-Y2-G2	U5B/20	1	9:00 - 10:45	1.75	Maarya	SP301
+S118ED-Y2-G2	U5P/21	1	1:00 - 2:00	1	Maarya	SP215
+S118ED-Y1-G3	U3C/14	1	9:00 - 10:30	1.5	John	SP306
+S118ED-Y1-G3	U2/4	3	9:00 - 10:30	1.5	Dalia	SP307
+S118ED-Y1-G3	U3B/10	1	1:30 - 3:00	1.5	Mubasshira	SP308
+S118ED-Y1-G3	U3P/4	2	1:00 - 2:30	1.5	Amran	SP310
+S118ED-Y1-G3	TUT	2	11:00 - 12:00	1	Sadik	SP312
+S118ED-Y1-G3	U1P/4	2	9:00 - 10:00	1	Saimah	SP309
+S118ED-Y1-G3	U1B/9	3	1:00 - 2:00	1	Sadik	SP312
+S118ED-Y1-G3	U1B/9	3	11:00 - 12:00	1	Dalia	SP307
+S118ED-Y1-G3	U1P/4	3	2:00 - 3:00	1	Amran	SP310
+S118ED-Y1-G3	U2/4	1	11:15 - 12:15	1	Amran	SP307
+S118ED-Y1-G3	U1C/14	4	10:00 - 11:00	1	Alex	SP310
+S118ED-Y1-G3	U1C/14	4	1:00 - 2:00	1	John	SP306
+S118ED-Y2-G3	U9	1	9:00 - 10:45	1.75	Mubasshira	SP308
+S118ED-Y2-G3	U5P/21	1	11:00 - 12:00	1	Maarya	SP301
+S118ED-Y2-G3	U5B/20	3	9:00 - 10:00	1	Batoul	SP007
+S118ED-Y2-G3	U5C/14	3	11:00 - 12:00	1	John	SP306
+S118ED-Y2-G3	U5P/21	4	9:00 - 10:45	1.75	Steven	SP309
+S118ED-Y2-G3	TUT	4	11:00 - 12:00	1	Mubasshira	SP308
+S118ED-Y2-G3	U5B/20	4	1:00 - 2:45	1.75	Maarya	SP301
+S118ED-Y2-G3	U7/6	5	9:00 - 10:30	1.5	Saimah	SP312
+S118ED-Y2-G3	U7/6	5	10:45 - 12:15	1.5	Maarya	SP301
+S118ED-Y2-G3	U5C/14	5	1:15 - 3:00	1.75	John	SP306
+S118ED-Y1-G4	U2/4	5	1:00 - 2:00	1	Amran	SP307
+S118ED-Y1-G4	U1B/9	1	11:15 - 12:15	1	Sadik	SP312
+S118ED-Y1-G4	U1B/9	2	9:00 - 10:00	1	Sadik	SP312
+S118ED-Y1-G4	TUT	2	11:00 - 12:00	1	Amran	SP307
+S118ED-Y1-G4	U2/4	2	1:00 - 2:30	1.5	Dalia	SP307
+S118ED-Y1-G4	U3C/14	5	9:00 - 10:30	1.5	Alex	SP307
+S118ED-Y1-G4	U3P/4	1	2:30 - 4:00	1.5	Amran	SP310
+S118ED-Y1-G4	U3B/10	3	1:30 - 3:00	1.5	Mubasshira	SP308
+S118ED-Y1-G4	U1P/4	1	1:15 - 2:15	1	Amran	SP310
+S118ED-Y1-G4	U1C/14	5	11:00 - 12:00	1	John	SP306
+S118ED-Y1-G4	U1C/14	5	2:15 - 3:15	1	Alex	SP308
+S118ED-Y1-G4	U1P/4	3	9:00 - 10:00	1	Saimah	SP208
+S118ED-Y1-G4	Maths	1	9:00 - 10:45	1.75	Khadija	SP201
+S118ED-Y1-G4	Maths	3	11:00 - 12:30	1.5	Khadija	SP201
+S118ED-Y2-G4	U5B/20	2	9:00 - 10:45	1.75	Maarya	SP301
+S118ED-Y2-G4	U5P/21	5	1:15 - 2:15	1	Maarya	SP301
+S118ED-Y2-G4	U5P/21	3	9:00 - 10:45	1.75	Steven	SP309
+S118ED-Y2-G4	U5B/20	3	11:00 - 12:00	1	Batoul	SP108
+S118ED-Y2-G4	U5C/14	4	9:00 - 10:45	1.75	John	SP306
+S118ED-Y2-G4	TUT	4	11:00 - 12:00	1	Maarya	SP301
+S118ED-Y2-G4	U9	4	1:00 - 2:45	1.75	Mubasshira	SP201
+S118ED-Y2-G4	U7/6	5	9:00 - 10:30	1.5	Maarya	SP301
+S118ED-Y2-G4	U7/6	5	10:45 - 12:15	1.5	Saimah	SP312
+S118ED-Y2-G4	U5C/14	2	11:00 - 12:00	1	John	SP306
+S118ED-Y1-G5	U2/4	1	9:00 - 10:30	1.5	Dalia	SP307
+S118ED-Y1-G5	U3B/10	1	11:00 - 12:30	1.5	Mubasshira	SP308
+S118ED-Y1-G5	U3P/4	3	10:30 - 12:00	1.5	Amran	SP310
+S118ED-Y1-G5	U1B/9	3	9:00 - 10:00	1	Sadik	SP215
+S118ED-Y1-G5	U1P/4	3	1:00 - 2:00	1	Amran	SP310
+S118ED-Y1-G5	TUT	2	11:00 - 12:00	1	Dalia	SP310
+S118ED-Y1-G5	U1P/4	4	10:00 - 11:00	1	Saimah	SP312
+S118ED-Y1-G5	U1C/14	2	1:00 - 2:00	1	Alex	SP309
+S118ED-Y1-G5	U2/4	4	11:00 - 12:00	1	Amran	SP307
+S118ED-Y1-G5	U1B/9	1	2:15 - 3:15	1	Sadik	SP312
+S118ED-Y1-G5	U3C/14	4	1:00 - 2:30	1.5	Alex	SP308
+S118ED-Y1-G5	U1C/14	4	2:45 - 3:45	1	John	SP306
+S118ED-Y1-G6	U3P/4	1	9:00 - 10:30	1.5	Amran	SP310
+S118ED-Y1-G6	U1C/14	1	11:00 - 12:00	1	John	SP306
+S118ED-Y1-G6	U1B/9	2	1:00 - 2:00	1	Sadik	SP301
+S118ED-Y1-G6	U1C/14	2	9:00 - 10:00	1	Alex	SP307
+S118ED-Y1-G6	TUT	2	11:00 - 12:00	1	Alex	SP113
+S118ED-Y1-G6	U1B/9	1	1:00 - 2:00	1	Sadik	SP312
+S118ED-Y1-G6	U1P/4	3	9:00 - 10:00	1	Amran	SP312
+S118ED-Y1-G6	U1P/4	3	11:00 - 12:00	1	Saimah	SP312
+S118ED-Y1-G6	U3C/14	3	1:00 - 2:30	1.5	Alex	SP309
+S118ED-Y1-G6	U3B/10	4	10:30 - 12:00	1.5	Batoul	SP214
+S118ED-Y1-G6	U2/4	4	9:00 - 10:00	1	Amran	SP312
+S118ED-Y1-G6	U2/4	4	1:00 - 2:30	1.5	Dalia	SP307
 `;
 
             processCSV(csvContent);
@@ -578,6 +578,7 @@
     </script>
 </body>
 </html>
+
 
 
 
