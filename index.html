@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Course Timetable</title>
+    <title>Timetable Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght{400;500;600;700}&display=swap" rel="stylesheet">
     <style>
@@ -21,7 +21,6 @@
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
         }
-        /* Custom button styling */
         .download-button {
             background-color: #2563eb;
             color: #ffffff;
@@ -34,25 +33,41 @@
         .download-button:hover {
             background-color: #1e40af;
         }
+        .download-button:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-4 sm:p-8">
 
     <div class="flex flex-col items-center p-4 bg-white rounded-xl shadow-lg mb-8">
-        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Course Timetable</h1>
-        <p class="text-gray-600 mb-6 text-center">Select a course to view its weekly timetable.</p>
+        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 mb-4">Timetable Viewer</h1>
+        <p class="text-gray-600 mb-6 text-center">Select a Course OR a Lecturer to view the weekly timetable.</p>
         
         <div class="w-full max-w-2xl flex flex-col items-center space-y-4">
-            <!-- Selector Row -->
-            <div class="w-full">
-                <label for="course-select" class="block text-gray-700 text-sm font-bold mb-2">Select Course:</label>
-                <select id="course-select" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline transition duration-200">
-                    <option value="">Loading...</option>
-                </select>
+            
+            <!-- Selector Container -->
+            <div class="w-full flex flex-col sm:flex-row gap-4">
+                <!-- Course Selector -->
+                <div class="w-full sm:w-1/2">
+                    <label for="course-select" class="block text-gray-700 text-sm font-bold mb-2">By Course:</label>
+                    <select id="course-select" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline transition duration-200">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+
+                <!-- Lecturer Selector -->
+                <div class="w-full sm:w-1/2">
+                    <label for="lecturer-select" class="block text-gray-700 text-sm font-bold mb-2">By Lecturer:</label>
+                    <select id="lecturer-select" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 leading-tight focus:outline-none focus:shadow-outline transition duration-200">
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
             </div>
             
             <!-- Button Row -->
-            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full">
+            <div class="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 w-full pt-2">
                 <button id="download-btn" class="download-button shadow-lg w-full sm:w-1/2" disabled>
                     Download Timetable PDF
                 </button>
@@ -65,6 +80,7 @@
 
     <div id="timetable-display" class="hidden">
         <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg">
+            <h2 id="timetable-title" class="text-2xl font-bold text-gray-800 mb-4 text-center"></h2>
             <div id="timetable-container" class="container">
                 <canvas id="timetable-canvas" width="1000" height="600"></canvas>
             </div>
@@ -77,46 +93,78 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const courseSelect = document.getElementById('course-select');
+            const lecturerSelect = document.getElementById('lecturer-select');
             const downloadBtn = document.getElementById('download-btn');
             const downloadAttendanceBtn = document.getElementById('download-attendance-btn');
             const timetableDisplay = document.getElementById('timetable-display');
+            const timetableTitle = document.getElementById('timetable-title');
             const canvas = document.getElementById('timetable-canvas');
             const ctx = canvas.getContext('2d');
+            
             let timetableData = [];
+            let currentSelection = { type: null, value: null }; 
 
             // Drawing constants for Canvas
             const timeHeaderWidth = 80;
             const dayHeaderHeight = 40;
-            const timeSlotHeight = 40;
-            const timeSlots = [
-                '9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'
-            ];
+            const timeSlots = ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
             const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
             const minutesInSlot = 30;
             const eng_maths = ["English","Maths"];
 
-            // Helper function: parse time string like "9:00" and return minutes from midnight
+            // --- Custom Color Palette for Lecturers ---
+            // Indices: 0-2 (Dark Blue), 3-5 (Light Blue), 6-7 (Purple), 8-9 (Light Purple)
+            const lecturerPalette = [
+                '#1d4ed8','#2563eb','#3b82f6', // Darker Blues
+                '#60a5fa','#93c5fd','#bfdbfe', // Lighter Blues
+                '#9333ea','#a855f7',           // Darker Purples
+                '#c084fc','#d8b4fe'            // Lighter Purples
+            ];
+
             function parseTime(timeStr) {
                 const [hours, minutes] = timeStr.split(':').map(Number);
                 return hours * 60 + minutes;
             }
 
-            // Helper function: convert 12-hour time string to 24-hour time string
             function convert12hrTo24hr(timeStr) {
                 let [hours, minutes] = timeStr.split(':').map(Number);
-                // Adjust for PM times (assuming times like 1:00 to 8:00 are PM)
                 if (hours >= 1 && hours <= 8) {
                     hours += 12;
                 }
                 return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
             }
 
+            // Helper to determine color based on Course Name (minus group)
+            function getCourseColorInfo(fullCourseString) {
+                // Remove group (everything after the last hyphen)
+                // e.g., "S118ED-Y1-G1" -> "S118ED-Y1"
+                const lastDash = fullCourseString.lastIndexOf('-');
+                const baseCourse = lastDash > -1 ? fullCourseString.substring(0, lastDash) : fullCourseString;
+                
+                // Generate a hash from the baseCourse string
+                let hash = 0;
+                for (let i = 0; i < baseCourse.length; i++) {
+                    hash = baseCourse.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                
+                // Map hash to palette index
+                const index = Math.abs(hash) % lecturerPalette.length;
+                const bgColor = lecturerPalette[index];
+
+                // Determine readable text color
+                // Palette indices 3, 4, 5, 8, 9 are light colors -> Use Dark Text
+                // Palette indices 0, 1, 2, 6, 7 are dark colors -> Use White Text
+                const isLight = [3, 4, 5, 8, 9].includes(index);
+                const textColor = isLight ? '#1f2937' : '#ffffff'; // Dark Gray or White
+
+                return { bgColor, textColor };
+            }
+
             // --- CANVAS DRAWING FUNCTION ---
-            function drawTimetable(course) {
+            function drawTimetable(type, value) {
                 // Clear the canvas
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                // Calculate cell dimensions dynamically
                 const timeCellWidth = (canvas.width - timeHeaderWidth) / (timeSlots.length * 2);
                 const dayCellHeight = (canvas.height - dayHeaderHeight) / days.length;
 
@@ -126,7 +174,6 @@
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
-                // Draw time headers
                 timeSlots.forEach((slot, index) => {
                     ctx.save();
                     ctx.translate(timeHeaderWidth + index * timeCellWidth * 2 + timeCellWidth, dayHeaderHeight / 2);
@@ -135,30 +182,25 @@
                     ctx.restore();
                 });
                 
-                // Draw day labels
                 ctx.fillStyle = '#4b5563';
                 ctx.font = '600 14px Inter, sans-serif';
                 ctx.textAlign = 'left';
                 days.forEach((day, index) => {
                     ctx.save();
-                    ctx.translate(10, dayHeaderHeight + index * dayCellHeight + dayCellHeight / 2);
+                    ctx.translate(1, dayHeaderHeight + index * dayCellHeight + dayCellHeight / 2);
                     ctx.fillStyle = '#4b5563';
                     ctx.fillText(day, 0, 0);
                     ctx.restore();
                 });
 
-                // Draw grid lines (horizontal and vertical)
+                // Draw grid lines
                 ctx.strokeStyle = '#e5e7eb';
-                
-                // Horizontal lines
                 for (let i = 0; i <= days.length; i++) {
                     ctx.beginPath();
                     ctx.moveTo(timeHeaderWidth, dayHeaderHeight + i * dayCellHeight);
                     ctx.lineTo(canvas.width, dayHeaderHeight + i * dayCellHeight);
                     ctx.stroke();
                 }
-
-                // Vertical lines (at the beginning of each hour)
                 for (let i = 0; i < timeSlots.length; i++) {
                     ctx.beginPath();
                     ctx.moveTo(timeHeaderWidth + i * timeCellWidth * 2, dayHeaderHeight);
@@ -166,13 +208,13 @@
                     ctx.stroke();
                 }
 
-                // Draw events
-                const courseEvents = timetableData.filter(event => event.course === course);
-                courseEvents.forEach(event => {
+                // Filter and Draw Events
+                const relevantEvents = timetableData.filter(event => event[type] === value);
+
+                relevantEvents.forEach(event => {
                     const timeParts = event.time.split(' - ');
                     const startTime24hr = convert12hrTo24hr(timeParts[0]);
-                    const endTime24hr = convert12hrTo24hr(timeParts[1]);
-                    const formattedTime = `${startTime24hr} - ${endTime24hr}`;
+                    const formattedTime = `${startTime24hr} - ${convert12hrTo24hr(timeParts[1])}`;
 
                     const startTimeMinutes = parseTime(startTime24hr);
                     const dayIndex = parseInt(event.day) - 1;
@@ -188,19 +230,27 @@
                         const width = durationInSlots * timeCellWidth;
                         const height = dayCellHeight;
 
-                        
-                        // Draw event rectangle
-                        if (eng_maths.includes(event.unit))
-                        {
-                             ctx.fillStyle = '#45913d'; // Darker green fill
-                        }else{
-                             ctx.fillStyle = '#1e40af'; // Darker blue fill
+                        // --- COLOR LOGIC ---
+                        let rectColor, textColor;
+
+                        if (type === 'lecturer') {
+                            const colorInfo = getCourseColorInfo(event.course);
+                            rectColor = colorInfo.bgColor;
+                            textColor = colorInfo.textColor;
+                            ctx.strokeStyle = rectColor; // Match border to fill
+                        } else {
+                            // Standard Course View Logic
+                            if (eng_maths.includes(event.unit)) {
+                                 rectColor = '#45913d'; 
+                                 ctx.strokeStyle = '#367a2e';
+                            } else {
+                                 rectColor = '#1e40af'; 
+                                 ctx.strokeStyle = '#2563eb';
+                            }
+                            textColor = '#ffffff';
                         }
                         
-                        
-                        // Draw event rectangle
-                        //ctx.fillStyle = '#1e40af'; // Darker blue fill
-                        ctx.strokeStyle = '#2563eb';
+                        ctx.fillStyle = rectColor;
                         ctx.lineWidth = 1;
                         ctx.beginPath();
                         ctx.roundRect(x + 2, y + 2, width - 4, height - 4, 8);
@@ -208,125 +258,116 @@
                         ctx.stroke();
 
                         // Draw event text
-                        ctx.fillStyle = '#ffffff';
+                        ctx.fillStyle = textColor;
                         ctx.textAlign = 'left';
                         ctx.textBaseline = 'top';
                         
                         const textX = x + 10;
                         const textY = y + 8;
-                        const lineHeight = 16;
+                        const lineHeight = 15;
 
-                        // Main unit/course name
-                        ctx.font = '600 14px Inter, sans-serif';
-                        ctx.fillText(event.unit, textX, textY);
-                        
-                        // Time, lecturer, and room
-                        ctx.font = '500 11px Inter, sans-serif';
-                        ctx.fillText(formattedTime, textX, textY + lineHeight + 2);
-                        ctx.fillText(`Lecturer: ${event.lecturer}`, textX, textY + lineHeight * 2 + 2);
-                        ctx.fillText(`Room: ${event.room}`, textX, textY + lineHeight * 3 + 2);
+                        if (type === 'lecturer') {
+                            // --- LECTURER VIEW LAYOUT ---
+                            ctx.font = '600 12px Inter, sans-serif'; 
+                            ctx.fillText(event.course, textX, textY);
+                            ctx.font = '600 11px Inter, sans-serif';
+                            ctx.fillText(event.unit, textX, textY + lineHeight);
+                            ctx.font = '500 11px Inter, sans-serif';
+                            ctx.fillText(formattedTime, textX, textY + lineHeight * 2);
+                            ctx.fillText(`Room: ${event.room}`, textX, textY + lineHeight * 3);
+                        } else {
+                            // --- COURSE VIEW LAYOUT ---
+                            ctx.font = '600 13px Inter, sans-serif';
+                            ctx.fillText(event.unit, textX, textY);
+                            ctx.font = '500 11px Inter, sans-serif';
+                            ctx.fillText(formattedTime, textX, textY + lineHeight + 2);
+                            ctx.fillText(`Lecturer: ${event.lecturer}`, textX, textY + lineHeight * 2 + 2);
+                            ctx.fillText(`Room: ${event.room}`, textX, textY + lineHeight * 3 + 2);
+                        }
                     }
                 });
+
+                timetableTitle.textContent = `${type === 'lecturer' ? 'Lecturer' : 'Course'}: ${value}`;
                 timetableDisplay.classList.remove('hidden');
                 downloadBtn.disabled = false;
                 downloadAttendanceBtn.disabled = false;
             }
 
-            // --- PDF DRAWING HELPER FUNCTION (Draws one visual timetable card) ---
-            function drawAttendanceTimetable(doc, course, yOffset) {
+            // --- PDF DRAWING HELPER FUNCTION (Maintains standard black/white for attendance) ---
+            function drawAttendanceTimetable(doc, type, value, yOffset) {
                 const margin = 10;
                 const docWidth = doc.internal.pageSize.getWidth();
-                const cardWidth = docWidth - 2 * margin; // 190mm for A4 portrait
-                const cardHeight = 120; // Reduced height for one card (was 120)
+                const cardWidth = docWidth - 2 * margin; 
+                const cardHeight = 120; 
 
                 let currentY = yOffset;
 
-                // 1. ID, Name, Date Header
+                // Header Info
                 doc.setFontSize(10);
                 doc.setFont(undefined, 'normal');
                 doc.setTextColor(50, 50, 50);
 
                 const headerLineHeight = 6;
                 doc.setFont(undefined, 'bold');
-                doc.text(`Course ID: ${course}`, margin, currentY);
+                
+                const label = type === 'lecturer' ? "Lecturer Name" : "Course ID";
+                doc.text(`${label}: ${value}`, margin, currentY);
+                
                 doc.setFont(undefined, 'normal');
                 currentY += headerLineHeight;
                 doc.text(`ID: ______________`, margin, currentY);
                 doc.text(`Name: ______________`, margin+(docWidth / 4)-15, currentY);
-                //currentY += headerLineHeight;
                 doc.text(`Reason: ________________________`, margin+(docWidth*2/4)-20, currentY);
                 doc.text(`Date: ___________`, margin+(docWidth*3/4), currentY);
-                currentY += headerLineHeight - 1; // Slight space reduction before grid starts
+                currentY += headerLineHeight - 1; 
 
                 const gridYStart = currentY;
-                const dayHeaderHeight = 8; // Reduced height for time heading
+                const dayHeaderHeight = 8; 
                 const timeSlots = ['9:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
                 const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
                 const timeHeaderWidth = 20;
-                // Recalculate cell height based on the new cardHeight of 100
+                
                 const dayCellHeight = (cardHeight - dayHeaderHeight) / days.length; 
                 const timeCellWidth = (cardWidth - timeHeaderWidth) / (timeSlots.length * 2);
 
-                // 2. Draw Grid and Headers
-                
-                // Draw outline box
+                // Draw Grid
                 doc.setDrawColor(0);
                 doc.setLineWidth(0.5);
                 doc.rect(margin, gridYStart, cardWidth, cardHeight);
 
-                // Draw day labels (vertical header)
                 doc.setFontSize(8);
                 doc.setFont(undefined, 'bold');
                 doc.text('Day', margin + timeHeaderWidth / 2, gridYStart + dayHeaderHeight / 2, { align: 'center' });
-                doc.setLineWidth(0.2); // Thinner line for grid
+                doc.setLineWidth(0.2);
                 
-                // Horizontal lines (for days)
                 days.forEach((day, index) => {
                     const y = gridYStart + dayHeaderHeight + index * dayCellHeight;
-                    // Draw day name
                     doc.setFontSize(10);
                     doc.setFont(undefined, 'bold');
                     doc.text(day.substring(0, 3), margin + timeHeaderWidth / 2, y + dayCellHeight / 2, { align: 'center' });
-                    // Draw day divider line
                     doc.line(margin, y, margin + cardWidth, y); 
                 });
                 
-                // Vertical line for day header
                 doc.line(margin + timeHeaderWidth, gridYStart, margin + timeHeaderWidth, gridYStart + cardHeight);
 
-                // Draw time headers (horizontal top header)
                 doc.setFontSize(8);
                 doc.setFont(undefined, 'bold');
                 timeSlots.forEach((slot, index) => {
                     const x = margin + timeHeaderWidth + index * timeCellWidth * 2 + timeCellWidth;
                     doc.text(slot, x, gridYStart + dayHeaderHeight / 2, { align: 'center' });
-                    
-                    // Vertical lines (at the beginning of each hour)
                     const xHourLine = margin + timeHeaderWidth + index * timeCellWidth * 2;
                     doc.line(xHourLine, gridYStart, xHourLine, gridYStart + cardHeight);
-                    
-                    // Vertical lines for half-hour slots
-                    /*const xHalfHourLine = xHourLine + timeCellWidth;
-                    if (index < timeSlots.length - 1) { 
-                         doc.setLineDash([1, 1], 0); // Dashed line for half hour
-                         doc.line(xHalfHourLine, gridYStart + dayHeaderHeight, xHalfHourLine, gridYStart + cardHeight);
-                         doc.setLineDash(0, 0); // Solid line reset
-                    }*/
                 });
-                
-                // Horizontal line for time header base
                 doc.line(margin, gridYStart + dayHeaderHeight, margin + cardWidth, gridYStart + dayHeaderHeight);
 
 
-                // 3. Draw Events (Unit Name only, top-left alignment)
+                // Draw Events
                 const minutesInSlot = 30;
-                const courseEvents = timetableData
-                    .filter(event => event.course === course);
+                const relevantEvents = timetableData.filter(event => event[type] === value);
 
-                courseEvents.forEach(event => {
+                relevantEvents.forEach(event => {
                     const timeParts = event.time.split(' - ');
                     const startTime24hr = convert12hrTo24hr(timeParts[0]);
-
                     const startTimeMinutes = parseTime(startTime24hr);
                     const dayIndex = parseInt(event.day) - 1;
 
@@ -341,40 +382,38 @@
                         const width = durationInSlots * timeCellWidth;
                         const height = dayCellHeight;
 
-                        // Draw event box outline and WHITE fill (R:255, G:255, B:255)
                         doc.setDrawColor(30, 30, 30);
-                        doc.setFillColor(255, 255, 255); // White fill requested
+                        doc.setFillColor(255, 255, 255); 
                         doc.setLineWidth(0.4);
                         doc.rect(x + 0.5, y + 0.5, width - 1, height - 1, 'FD');
 
-                        // Unit Text (Top-Left aligned)
+                        // Unit Text inside PDF Box
                         doc.setTextColor(30, 30, 30);
                         doc.setFont(undefined, 'bold');
-                        doc.setFontSize(7);
                         
-                        const textMarginX = 1; // Small horizontal padding
-                        const textMarginY = 2.5; // Small vertical padding from the top edge of the cell
+                        const textMarginX = 1; 
+                        const textMarginY = 2.5;
                         
-                        doc.text(event.unit, x + textMarginX, y + textMarginY, { align: 'left', baseline: 'top' });
+                        if (type === 'lecturer') {
+                            doc.setFontSize(6);
+                            doc.text(event.course, x + textMarginX, y + textMarginY, { align: 'left', baseline: 'top' });
+                            doc.text(event.unit, x + textMarginX, y + textMarginY + 3, { align: 'left', baseline: 'top' });
+                        } else {
+                            doc.setFontSize(7);
+                            doc.text(event.unit, x + textMarginX, y + textMarginY, { align: 'left', baseline: 'top' });
+                        }
                     }
                 });
             }
 
-            // Function to generate the Visual Attendance Card PDF (Two per page)
-            function generateAttendanceCardPDF(course) {
+            // Function to generate the Visual Attendance Card PDF
+            function generateAttendanceCardPDF(type, value) {
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4'); // Portrait mode
-
-                // Draw the first timetable (top half) - starting at 10mm
-                drawAttendanceTimetable(doc, course, 10);
-
-                // Draw the second timetable (bottom half) - starting at 130mm
-                // Start position changed from 150mm to 130mm to utilize space better after card height reduction
-                drawAttendanceTimetable(doc, course, 160); 
-                
-                doc.save(`attendance-card-visual-${course}.pdf`);
+                const doc = new jsPDF('p', 'mm', 'a4'); 
+                drawAttendanceTimetable(doc, type, value, 10);
+                drawAttendanceTimetable(doc, type, value, 160); 
+                doc.save(`attendance-${type}-${value}.pdf`);
             }
-
 
             // Function to handle the CSV file content
             function processCSV(csvString) {
@@ -397,9 +436,20 @@
                     option.textContent = course;
                     courseSelect.appendChild(option);
                 });
+
+                const lecturers = [...new Set(timetableData.map(event => event.lecturer))]
+                    .filter(l => l && l.toLowerCase() !== 'none')
+                    .sort();
+                lecturerSelect.innerHTML = '<option value="">Select a lecturer...</option>';
+                lecturers.forEach(lecturer => {
+                    const option = document.createElement('option');
+                    option.value = lecturer;
+                    option.textContent = lecturer;
+                    lecturerSelect.appendChild(option);
+                });
             }
 
-            // Direct content of the CSV file to avoid fetch errors.
+            // CSV CONTENT
             const csvContent = `course	unit	day	time	length	lecturer	room
             S104-G1	U4	2	9:00 - 10:30	1.5	Batoul	SP215
 S104-G1	TUT	2	11:00 - 12:00	1	Batoul	SP309
@@ -538,63 +588,82 @@ S118ED-Y1-G6	U2/4	4	1:00 - 2:30	1.5	Dalia	SP307
 
             processCSV(csvContent);
 
-            // Event listener for course selection
+            // Event listener for Course selection
             courseSelect.addEventListener('change', (e) => {
                 const selectedCourse = e.target.value;
                 if (selectedCourse) {
-                    drawTimetable(selectedCourse);
+                    lecturerSelect.value = ""; // Reset lecturer select
+                    currentSelection = { type: 'course', value: selectedCourse };
+                    drawTimetable('course', selectedCourse);
                 } else {
-                    timetableDisplay.classList.add('hidden');
-                    downloadBtn.disabled = true;
-                    downloadAttendanceBtn.disabled = true;
+                    hideTimetable();
                 }
             });
 
-            // Event listener for the download Timetable PDF button (Original logic)
+            // Event listener for Lecturer selection
+            lecturerSelect.addEventListener('change', (e) => {
+                const selectedLecturer = e.target.value;
+                if (selectedLecturer) {
+                    courseSelect.value = ""; // Reset course select
+                    currentSelection = { type: 'lecturer', value: selectedLecturer };
+                    drawTimetable('lecturer', selectedLecturer);
+                } else {
+                    hideTimetable();
+                }
+            });
+
+            function hideTimetable() {
+                timetableDisplay.classList.add('hidden');
+                downloadBtn.disabled = true;
+                downloadAttendanceBtn.disabled = true;
+                currentSelection = { type: null, value: null };
+            }
+
+            // Download Timetable PDF
             downloadBtn.addEventListener('click', () => {
-                const doc = new window.jspdf.jsPDF('l', 'mm', 'a4'); // 'l' for landscape mode
+                if(!currentSelection.value) return;
+
+                const doc = new window.jspdf.jsPDF('l', 'mm', 'a4'); 
                 const canvasImage = canvas.toDataURL('image/png', 1.0);
                 
-                const imgWidth = 297; 
+                // Add Title to PDF
+                const pdfWidth = doc.internal.pageSize.getWidth();
+                doc.setFontSize(20);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(30, 30, 30);
+                const titleText = `${currentSelection.type === 'lecturer' ? 'Lecturer' : 'Course'}: ${currentSelection.value}`;
+                doc.text(titleText, pdfWidth / 2, 15, { align: 'center' });
+
+                // Add Image (shifted down to make room for title)
+                const startY = 25; 
+                const imgWidth = 277; // Slightly less than 297 to allow margins
                 const pageHeight = 210; 
                 const imgHeight = (canvas.height * imgWidth) / canvas.width;
                 let heightLeft = imgHeight;
 
-                let position = 0;
+                let position = startY;
 
-                doc.addImage(canvasImage, 'PNG', 0, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
+                doc.addImage(canvasImage, 'PNG', 10, position, imgWidth, imgHeight);
+                heightLeft -= (pageHeight - startY);
 
                 while (heightLeft >= 0) {
                     position = heightLeft - imgHeight;
                     doc.addPage();
-                    doc.addImage(canvasImage, 'PNG', 0, position, imgWidth, imgHeight);
+                    doc.addImage(canvasImage, 'PNG', 10, position, imgWidth, imgHeight);
                     heightLeft -= pageHeight;
                 }
                 
-                const selectedCourse = courseSelect.value;
-                const filename = `timetable-${selectedCourse}.pdf`;
+                const filename = `timetable-${currentSelection.type}-${currentSelection.value}.pdf`;
                 doc.save(filename);
             });
 
-            // Event listener for the download Attendance Card button (New visual logic)
+            // Download Attendance Card
             downloadAttendanceBtn.addEventListener('click', () => {
-                const selectedCourse = courseSelect.value;
-                if (selectedCourse) {
-                    // Call the new visual generation function
-                    generateAttendanceCardPDF(selectedCourse);
+                if(currentSelection.value) {
+                    generateAttendanceCardPDF(currentSelection.type, currentSelection.value);
                 }
             });
         });
     </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
